@@ -1,0 +1,210 @@
+st]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          pip install -e . || true
+          pip install pandas numpy pyyaml tabulate matplotlib pytest
+      - name: Run tests
+        run: pytest -q
+      - name: Run unit tests (with JUnit)
+        run: |
+          pytest -q --maxfail=1 --disable-warnings --junitxml=pytest.xml
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: olivia-tests-${{ github.sha }}
+          path: |
+            pytest.xml
+            .pytest_cache/**/*
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Prepare CI sample data
+        run: |
+          mkdir -p data
+          python - <<'PY'
+import pandas as pd, numpy as np
+idx = pd.date_range('2024-06-03 09:30:00', periods=3600, freq='1s', tz='America/New_York').tz_convert(None)
+base = 10000 + np.cumsum(np.random.default_rng(0).normal(0, 0.4, len(idx)))
+df = pd.DataFrame({
+  'ts': idx,
+  'open': base,
+  'high': base + 0.5,
+  'low': base - 0.5,
+  'close': base + np.random.default_rng(1).normal(0, 0.2, len(idx)),
+  'volume': np.random.default_rng(2).integers(1, 10, len(idx))
+})
+df.to_csv('data/MNQ_1s.csv', index=False)
+PY
+      - name: Run Olivia smoke backtest (CI)
+        run: |
+          OLIVIA_DATA_DIR=data \
+          olivia backtest \
+            --config config/olivia.yaml \
+            --title "CI-${{ github.event.pull_request.number || github.run_id }}-${{ github.sha }}" \
+            --outdir runs/ci-smoke \
+            --seed 42 \
+            --save-png --report
+      - name: Upload Olivia artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: olivia-artifacts-${{ github.sha }}
+          path: |
+            runs/ci-smoke/trades.csv
+            runs/ci-smoke/equity.csv
+            runs/ci-smoke/report.html
+            runs/ci-smoke/equity*.png
+          if-no-files-found: error
+          retention-days: 7
+```yaml
+name: olivia-ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          pip install -e . || true
+          pip install pandas numpy pyyaml tabulate matplotlib pytest
+      - name: Run tests
+        run: pytest -q
+      - name: Run unit tests (with JUnit)
+        run: |
+          pytest -q --maxfail=1 --disable-warnings --junitxml=pytest.xml
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: olivia-tests-${{ github.sha }}
+          path: |
+            pytest.xml
+            .pytest_cache/**/*
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Prepare CI sample data
+        run: |
+          mkdir -p data
+          python - <<'PY'
+import pandas as pd, numpy as np
+idx = pd.date_range('2024-06-03 09:30:00', periods=3600, freq='1s', tz='America/New_York').tz_convert(None)
+base = 10000 + np.cumsum(np.random.default_rng(0).normal(0, 0.4, len(idx)))
+df = pd.DataFrame({
+  'ts': idx,
+  'open': base,
+  'high': base + 0.5,
+  'low': base - 0.5,
+  'close': base + np.random.default_rng(1).normal(0, 0.2, len(idx)),
+  'volume': np.random.default_rng(2).integers(1, 10, len(idx))
+})
+df.to_csv('data/MNQ_1s.csv', index=False)
+PY
+      - name: Run Olivia smoke backtest (CI)
+        run: |
+          OLIVIA_DATA_DIR=data \
+          olivia backtest \
+            --config config/olivia.yaml \
+            --title "CI-${{ github.event.pull_request.number || github.run_id }}-${{ github.sha }}" \
+            --outdir runs/ci-smoke \
+            --seed 42 \
+            --save-png --report
+      - name: Upload Olivia artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: olivia-artifacts-${{ github.sha }}
+          path: |
+            runs/ci-smoke/trades.csv
+            runs/ci-smoke/equity.csv
+            runs/ci-smoke/report.html
+            runs/ci-smoke/equity*.png
+          if-no-files-found: error
+          retention-days: 7
+```yaml
+name: olivia-ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          pip install -e . || true
+          pip install pandas numpy pyyaml tabulate matplotlib pytest
+      - name: Run tests
+        run: pytest -q
+      - name: Prepare CI sample data
+        run: |
+          mkdir -p data
+          python - <<'PY'
+import pandas as pd, numpy as np
+from datetime import datetime
+idx = pd.date_range('2024-06-03 09:30:00', periods=3600, freq='1s', tz='America/New_York').tz_convert(None)
+base = 10000 + np.cumsum(np.random.default_rng(0).normal(0, 0.4, len(idx)))
+df = pd.DataFrame({
+  'ts': idx,
+  'open': base,
+  'high': base + 0.5,
+  'low': base - 0.5,
+  'close': base + np.random.default_rng(1).normal(0, 0.2, len(idx)),
+  'volume': np.random.default_rng(2).integers(1, 10, len(idx))
+})
+df.to_csv('data/MNQ_1s.csv', index=False)
+PY
+      - name: Run Olivia smoke backtest (CI)
+        run: |
+          OLIVIA_DATA_DIR=data \
+          olivia backtest \
+            --config config/olivia.yaml \
+            --title "CI-${{ github.event.pull_request.number || github.run_id }}-${{ github.sha }}" \
+            --outdir runs/ci-smoke \
+            --seed 42 \
+            --save-png --report
+      - name: Upload Olivia artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: olivia-artifacts-${{ github.sha }}
+          path: |
+            runs/ci-smoke/trades.csv
+            runs/ci-smoke/equity.csv
+            runs/ci-smoke/report.html
+            runs/ci-smoke/equity*.png
+          if-no-files-found: error
+          retention-days: 7
+```yaml
+name: olivia-ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          # Install repo in editable mode if applicable
+          pip install -e . || true
+          # Ensure Olivia deps are present
+          pip install pandas numpy pyyaml tabulate matplotlib
+      - name: Run tests
+        run: pytest -q
