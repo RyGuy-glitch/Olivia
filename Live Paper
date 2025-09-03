@@ -1,0 +1,2 @@
+export ALPACA_KEY_ID=... ALPACA_SECRET_KEY=... ALPACA_PAPER=1
+olivia live --config config/olivia.yaml --symbol MNQ --start-now
