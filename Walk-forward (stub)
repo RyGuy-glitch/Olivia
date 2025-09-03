@@ -1,0 +1,61 @@
+olivia backtest --config config/olivia.yaml \
+--walk-forward --wf-window-bars 80000 --wf-step-bars 20000 --no-wf-refit-features
+
+---
+
+
+## tests/olivia/test_vwap_sessions.py
+```python
+import pandas as pd
+import numpy as np
+from olivia.data.features import session_aware_vwap
+
+
+
+
+def make_minutes(start: str, end: str, tz: str = "America/New_York") -> pd.DataFrame:
+idx = pd.date_range(start, end, freq='1min', tz=tz)
+close = pd.Series(np.arange(len(idx)) + 100.0, index=idx)
+vol = pd.Series(np.ones(len(idx)), index=idx)
+df = pd.DataFrame({
+'ts': idx.tz_convert(None),
+'open': close.values,
+'high': close.values,
+'low': close.values,
+'close': close.values,
+'volume': vol.values,
+})
+return df
+
+
+
+
+def _strictly_increasing(s: pd.Series) -> bool:
+v = s.dropna().values
+return bool((np.diff(v) > 0).all()) if len(v) > 1 else True
+
+
+
+
+def test_vwap_resets_at_session_boundaries():
+df_reg = make_minutes("2024-07-01 09:25", "2024-07-01 09:40")
+vwap_reg = session_aware_vwap(df_reg, session="REGULAR")
+ts = pd.to_datetime(df_reg['ts'])
+mask_in = (ts.dt.hour > 9) | ((ts.dt.hour == 9) & (ts.dt.minute >= 30))
+reg_in = vwap_reg[mask_in]
+assert _strictly_increasing(reg_in)
+first_idx = reg_in.first_valid_index()
+assert abs(reg_in.loc[first_idx] - df_reg.loc[first_idx, 'close']) < 1e-9
+
+
+df_ext = make_minutes("2024-07-01 16:55", "2024-07-01 18:05")
+vwap_ext = session_aware_vwap(df_ext, session="EXT")
+ts_e = pd.to_datetime(df_ext['ts'])
+mask_pre = (ts_e.dt.hour < 18)
+ext_pre = vwap_ext[mask_pre]
+assert _strictly_increasing(ext_pre)
+first_new_mask = (ts_e.dt.hour == 18) & (ts_e.dt.minute == 0)
+first_new_idx = vwap_ext[first_new_mask].first_valid_index()
+assert abs(vwap_ext.loc[first_new_idx] - df_ext.loc[first_new_idx, 'close']) < 1e-9
+last_old = ext_pre.dropna().iloc[-1]
+assert vwap_ext.loc[first_new_idx] < last_old
