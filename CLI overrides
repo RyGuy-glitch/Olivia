@@ -1,0 +1,1 @@
+olivia backtest --config config/olivia.yaml --contract MNQ --title "MNQ REG 1s"
