@@ -1,0 +1,39 @@
+universe:
+  symbols: ["MES", "MNQ", "MYM"]
+  session: "REGULAR"
+
+data:
+  source: "csv"
+  bar_interval: "1s"
+  warmup_bars: 1200
+
+strategy:
+  name: "ema_vwap_scalp"
+  params:
+    fast_ema: 9
+    slow_ema: 21
+    vwap_confirm: true
+    r_mult_target: 1.2
+    r_mult_stop: 1.0
+    max_concurrent: 1
+    cooldown_sec: 15
+
+risk:
+  per_trade_risk_pct: 0.25
+  daily_loss_limit_pct: 2.0
+  max_positions: 1
+  hard_kill_on_loss_limit: true
+
+execution:
+  broker: "paper_alpaca"
+  throttle_ms: 80
+  slippage_bp: 1.5
+
+logging:
+  level: "INFO"
+  outdir: "runs/olivia"
+
+backtest:
+  commission_per_contract: 1.2
+  start: "2024-06-01"
+  end: "2024-09-01"
